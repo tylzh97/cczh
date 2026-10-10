@@ -1,1 +1,1 @@
-{"name": "underscore-probe", "description": "Probe prompt.submit and turn.complete with underscore interleaving", "version": "0.1.0"}
+{"name": "always-english", "description": "Translate typed prompts to English via DeepSeek (pastes kept as-is) and show a Chinese translation under the final answer", "version": "0.1.0"}
