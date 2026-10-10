@@ -2,6 +2,8 @@
 
 const API = 'https://api.deepseek.com/chat/completions'
 const MODEL = 'deepseek-flash'
+// 原文已经是目标语言时 DeepSeek 只回这个 token，省得原样复述一遍（见 prompts/*.md）
+const UNCHANGED = 'LANGUAGE_UNCHANGED'
 
 /**
  * 构造翻译请求（关闭思考，约 1 秒）。
@@ -37,7 +39,7 @@ export function buildRequest(system, text, key) {
  *   r: $.http.fetch 的结果 { ok, status, text }。
  *
  * Returns:
- *   译文。
+ *   译文；原文已经是目标语言时返回 null。
  *
  * Raises:
  *   Error: HTTP 失败或返回为空。
@@ -46,5 +48,5 @@ export function parseResponse(r) {
   if (!r.ok) throw new Error(`DeepSeek HTTP ${r.status}: ${r.text.slice(0, 200)}`)
   const translated = JSON.parse(r.text).choices?.[0]?.message?.content?.trim()
   if (!translated) throw new Error('DeepSeek returned empty content')
-  return translated
+  return translated === UNCHANGED ? null : translated
 }

@@ -57,7 +57,9 @@ export function registerAnswer(on) {
     if (!needsChinese(template)) return r
     $.ui.status('Translating answer…')
     try {
-      await remember($, e.answer, await translate($, template))
+      const chinese = await translate($, template)
+      // 已经是中文：不追加、不存
+      if (chinese !== null) await remember($, e.answer, chinese)
     } catch (err) {
       $.ui.log(`Answer translation failed: ${err.message}`)
     } finally {

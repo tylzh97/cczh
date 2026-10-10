@@ -27,7 +27,10 @@ export function registerPrompt(on) {
     // 失败就发原文，不吞掉用户的 prompt
     let text = e.text
     try {
-      text = fill(await translate($, template), hidden, 'paste')
+      const english = await translate($, template)
+      // 已经是英文：原样发出，不打核对行
+      if (english === null) return next(e)
+      text = fill(english, hidden, 'paste')
       // 视觉反馈：显示翻译前的原文（粘贴为占位符），方便核对；$.ui.log 不发给模型，只画一行，所以逐行输出
       for (const line of template.split('\n')) $.ui.log(line)
     } catch (err) {
