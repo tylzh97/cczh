@@ -62,15 +62,7 @@ export function fill(translated, hidden, kind) {
   return translated.replace(marker(kind), (_, n) => hidden[n - 1])
 }
 
-// If the text portion is all ASCII there's no need to translate into English
-export function needsEnglish(template) {
-  return /[^\x00-\x7F]/.test(template.replace(ANY_MARKER, ''))
-}
-
-// Only translate into Chinese when the text portion has more Latin letters than CJK characters
-export function needsChinese(template) {
-  const t = template.replace(ANY_MARKER, '')
-  const cjk = (t.match(/[一-鿿]/g) ?? []).length
-  const latin = (t.match(/[A-Za-z]/g) ?? []).length
-  return latin > cjk
+// The template's own text, without placeholders
+export function stripMarkers(template) {
+  return template.replace(ANY_MARKER, '')
 }

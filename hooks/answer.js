@@ -1,5 +1,6 @@
 // Feature 2: the main agent's final answer is translated into Chinese via DeepSeek and appended to the end of the answer block; display only, never enters the model context
-import { splitCode, toTemplate, needsChinese } from './lib/template.js'
+import { splitCode, toTemplate } from './lib/template.js'
+import { needsChinese } from './lib/lang.js'
 import { buildRequest, parseResponse } from './lib/deepseek.js'
 
 // Translations persist in $.store (the plugin's own JSON file, outside the transcript and model context), surviving restarts, hot reloads and --resume
@@ -22,8 +23,22 @@ async function translate($, text) {
 }
 
 async function load($) {
-  loading ??= $.store.get(STORE_KEY).then((v) => new Map(v ?? []))
+  // On failure forget the rejected Promise so the next call retries instead of failing forever
+  loading ??= $.store.get(STORE_KEY).then(
+    (v) => new Map(v ?? []),
+    (err) => {
+      loading = undefined
+      throw err
+    },
+  )
   return loading
+}
+
+// Delete then insert so a repeated key moves to the newest position, evicting the oldest beyond KEEP
+function put(map, key, value) {
+  map.delete(key)
+  map.set(key, value)
+  while (map.size > KEEP) map.delete(map.keys().next().value)
 }
 
 // Key by hash instead of storing the answer text, halving the space used
@@ -32,18 +47,31 @@ async function sha256(text) {
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+// ui.render fires on every redraw, so memoize text → hash to avoid rehashing unchanged blocks
+const hashes = new Map()
+
+async function hashOf(text) {
+  let hash = hashes.get(text)
+  if (!hash) put(hashes, text, (hash = await sha256(text)))
+  return hash
+}
+
 async function remember($, answer, chinese) {
   const cache = await load($)
-  const key = await sha256(answer)
-  // Delete then insert so a repeated answer moves to the newest position
-  cache.delete(key)
-  cache.set(key, chinese)
-  while (cache.size > KEEP) cache.delete(cache.keys().next().value)
-  await $.store.set(STORE_KEY, [...cache])
+  put(cache, await hashOf(answer), chinese)
+  // A failed write isn't a failed translation: it's still in memory and shows for this session
+  try {
+    await $.store.set(STORE_KEY, [...cache])
+  } catch (err) {
+    $.ui.log(`Saving answer translation failed, kept for this session only: ${err.message}`)
+  }
 }
 
 async function recall($, answer) {
-  return (await load($)).get(await sha256(answer))
+  // An unreadable store just means no translation to show; load retries on the next render
+  const cache = await load($).catch(() => undefined)
+  if (!cache?.size) return undefined
+  return cache.get(await hashOf(answer))
 }
 
 export function registerAnswer(on) {

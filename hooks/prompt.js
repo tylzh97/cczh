@@ -1,6 +1,7 @@
 // Feature 1: text the user types is translated into English via DeepSeek before it reaches Claude; pasted content is kept as-is and never sent to DeepSeek
 import { installTracker, takeParts } from './lib/tracker.js'
-import { toTemplate, needsEnglish, fill } from './lib/template.js'
+import { toTemplate, fill } from './lib/template.js'
+import { needsEnglish } from './lib/lang.js'
 import { buildRequest, parseResponse } from './lib/deepseek.js'
 
 // prompts/to-english.md, read on first use; reload the plugin after editing the .md
