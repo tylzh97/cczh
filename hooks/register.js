@@ -23,8 +23,8 @@ export function register(on) {
       const filled = fill(english, pastes)
       if (filled === undefined) throw new Error(`placeholder mismatch: ${english}`)
       text = filled
-      // 视觉反馈：显示带占位符的译文；$.ui.log 不发给模型，只画一行，所以逐行输出
-      for (const line of english.split('\n')) $.ui.log(line)
+      // 视觉反馈：显示翻译前的原文（粘贴为占位符），方便核对；$.ui.log 不发给模型，只画一行，所以逐行输出
+      for (const line of template.split('\n')) $.ui.log(line)
     } catch (err) {
       $.ui.log(`Translation failed, sending original: ${err.message}`)
     }
