@@ -13,6 +13,9 @@ import {
   parseResponse,
 } from './translate.js'
 
+// 最后回答（trim 后）→ 中文译文；只在内存里，热重载会丢（见 TODO.md）
+const translations = new Map()
+
 // $ 只能传给本文件里的函数，所以 IO 放这里
 async function deepseek($, system, text) {
   const [url, init] = buildRequest(system, text)
@@ -55,15 +58,25 @@ export function register(on) {
     // 代码块不发给 DeepSeek，译文里保留 [CODE n]，原文就在上面
     const { template } = toTemplate(splitCode(e.answer), 'code', 'CODE')
     if (!needsChinese(template)) return r
+    $.ui.status('Translating answer…')
     try {
-      const chinese = await deepseek($, TO_CHINESE, template)
-      // 不用返回 { text }：实测它被画成一行，换行变成乱码，还会带上其他插件的名字
-      // $.ui.log 不发给模型，只画一行，所以逐行输出；空行跳过
-      $.ui.log('── 中文翻译 ──')
-      for (const line of chinese.split('\n')) if (line.trim()) $.ui.log(line)
+      translations.set(e.answer.trim(), await deepseek($, TO_CHINESE, template))
+      // 让回答块重画，ui.render 会把译文追加上去
+      $.ui.invalidate('ui.render')
     } catch (err) {
       $.ui.log(`Answer translation failed: ${err.message}`)
+    } finally {
+      $.ui.status(undefined)
     }
     return r
+  })
+
+  // 译文追加在最后回答的块末尾：只改显示，存储的消息和模型上下文都不变
+  // 工具调用前的文字块和 e.answer 对不上，不会追加
+  // 不用 turn.complete 返回 { text }（画成一行、换行乱码），也不用 ui.log（每行带前缀、不渲染 markdown）
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
+    const chinese = translations.get(e.props.text.trim())
+    if (!chinese) return next(e)
+    return next({ ...e, props: { ...e.props, text: `${e.props.text}\n\n---\n\n${chinese}` } })
   })
 }
