@@ -8,13 +8,10 @@ const UNCHANGED = 'LANGUAGE_UNCHANGED'
 /**
  * Build a translation request (thinking disabled, ~1 second).
  *
- * Args:
- *   system: system prompt, from prompts/*.md.
- *   text: the template to translate.
- *   key: DeepSeek API key.
- *
- * Returns:
- *   [url, init], passed straight to $.http.fetch.
+ * @param {string} system System prompt, from prompts/*.md.
+ * @param {string} text The template to translate.
+ * @param {string} key DeepSeek API key.
+ * @returns {[string, import('claude-code').HttpInit]} [url, init], passed straight to $.http.fetch.
  */
 export function buildRequest(system, text, key) {
   const init = {
@@ -35,14 +32,9 @@ export function buildRequest(system, text, key) {
 /**
  * Extract the translation from a $.http.fetch response.
  *
- * Args:
- *   r: the $.http.fetch result { ok, status, text }.
- *
- * Returns:
- *   The translation; null when the text is already in the target language.
- *
- * Raises:
- *   Error: HTTP failure or empty response.
+ * @param {import('claude-code').HttpResponse} r The $.http.fetch result.
+ * @returns {string | null} The translation; null when the text is already in the target language.
+ * @throws {Error} HTTP failure or empty response.
  */
 export function parseResponse(r) {
   if (!r.ok) throw new Error(`DeepSeek HTTP ${r.status}: ${r.text.slice(0, 200)}`)

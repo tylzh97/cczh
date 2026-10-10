@@ -7,6 +7,9 @@
 //
 // Long pastes don't fire prompt.edit (see anthropics/claude-code#100443), so resync fills the gap
 
+/** @typedef {{ kind: 'typed' | 'paste' | 'folded', text: string }} Seg */
+/** @typedef {{ kind: 'typed' | 'paste', text: string }} Part */
+
 const PLACEHOLDER = /(\[Pasted text #\d+[^\]]*\])/
 
 const join = (segs) => segs.map((s) => s.text).join('')
@@ -48,12 +51,9 @@ function classify(text) {
 /**
  * Sync segs to the real input box: handles changes that bypassed prompt.edit (long pastes, history recall, fills by other plugins).
  *
- * Args:
- *   segs: current segments.
- *   box: the actual input box content.
- *
- * Returns:
- *   Segments that concatenate to box; the changed range is located via common prefix/suffix.
+ * @param {Seg[]} segs Current segments.
+ * @param {string} box The actual input box content.
+ * @returns {Seg[]} Segments that concatenate to box; the changed range is located via common prefix/suffix.
  */
 export function resync(segs, box) {
   const cur = join(segs)
@@ -71,12 +71,9 @@ export function resync(segs, box) {
  *
  * An insertion with no key that contains a newline counts as a paste; everything else counts as typed (Shift+Enter has a key, so it's typed).
  *
- * Args:
- *   segs: current segments.
- *   e: the prompt.edit input (text is the input box before the edit, start/end/inputText describe the splice).
- *
- * Returns:
- *   The segments after the edit.
+ * @param {Seg[]} segs Current segments.
+ * @param {import('claude-code').Args<'prompt.edit'>} e The prompt.edit input (text is the input box before the edit, start/end/inputText describe the splice).
+ * @returns {Seg[]} The segments after the edit.
  */
 export function applyEdit(segs, e) {
   const kind = !e.key && e.inputText.includes('\n') ? 'paste' : 'typed'
@@ -89,12 +86,9 @@ export function applyEdit(segs, e) {
  * typed/paste segments are located in order verbatim; anything between them that doesn't
  * match (expanded long pastes, pastes not synced before submit) counts as paste.
  *
- * Args:
- *   segs: segments before submit.
- *   text: e.text from prompt.submit.
- *
- * Returns:
- *   [{ kind: 'typed' | 'paste', text }], concatenating to text.
+ * @param {Seg[]} segs Segments before submit.
+ * @param {string} text e.text from prompt.submit.
+ * @returns {Part[]} Typed and paste parts, concatenating to text.
  */
 export function align(segs, text) {
   // The engine trims leading/trailing whitespace on submit: the start is simply trimmed; the end isn't necessarily the end of segs
