@@ -116,19 +116,3 @@ export function align(segs, text) {
   parts.push({ kind: 'paste', text: text.slice(pos) })
   return normalize(parts)
 }
-
-const TAGS = { typed: 'input', paste: 'paste' }
-
-/**
- * 把对齐后的分段拼回文本，每段用对应标签包起来。
- *
- * Args:
- *   parts: align 的结果。
- *   tags: kind → 标签名，默认 typed → input，paste → paste。
- *
- * Returns:
- *   标记后的文本，如 <input>看这个 </input><paste>foo\nbar</paste>。
- */
-export function mark(parts, tags = TAGS) {
-  return parts.map((p) => `<${tags[p.kind]}>${p.text}</${tags[p.kind]}>`).join('')
-}
