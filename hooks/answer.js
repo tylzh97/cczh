@@ -1,18 +1,18 @@
-// 功能二：主 agent 的最后回答经 DeepSeek 翻译成中文，追加显示在回答块末尾；只改显示，不进模型上下文
+// Feature 2: the main agent's final answer is translated into Chinese via DeepSeek and appended to the end of the answer block; display only, never enters the model context
 import { splitCode, toTemplate, needsChinese } from './lib/template.js'
 import { buildRequest, parseResponse } from './lib/deepseek.js'
 
-// 译文持久化在 $.store（插件自己的 JSON 文件，不进会话记录和模型上下文），跨重启、热重载和 --resume
-// 存成 [[hash, 译文], ...]，最旧的在前；整个 store 上限 4 MiB，所以只留最近 KEEP 条
+// Translations persist in $.store (the plugin's own JSON file, outside the transcript and model context), surviving restarts, hot reloads and --resume
+// Stored as [[hash, translation], ...], oldest first; the whole store is capped at 4 MiB, so only the most recent KEEP entries are kept
 const STORE_KEY = 'translations'
 const KEEP = 100
 
-// 内存缓存：sha256(回答) → 译文；第一次用到时从 $.store 读入，存 Promise 避免并发重复加载
+// In-memory cache: sha256(answer) → translation; loaded from $.store on first use, holding the Promise to avoid concurrent duplicate loads
 let loading
-// prompts/to-chinese.md，第一次用到时读入；改了 .md 重载插件生效
+// prompts/to-chinese.md, read on first use; reload the plugin after editing the .md
 let system
 
-// $ 只能传给本文件里的函数，所以 IO 放这里（prompt.js 里有一份同样的）
+// `$` can only be passed to functions in this file, so the IO lives here (prompt.js has an identical copy)
 async function translate($, text) {
   const key = await $.env.get('DEEPSEEK_API_KEY')
   if (!key) throw new Error('DEEPSEEK_API_KEY is not set')
@@ -26,7 +26,7 @@ async function load($) {
   return loading
 }
 
-// key 用哈希，不存回答原文，省一半空间
+// Key by hash instead of storing the answer text, halving the space used
 async function sha256(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text.trim()))
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('')
@@ -35,7 +35,7 @@ async function sha256(text) {
 async function remember($, answer, chinese) {
   const cache = await load($)
   const key = await sha256(answer)
-  // 先删再插，重复的回答挪到最新
+  // Delete then insert so a repeated answer moves to the newest position
   cache.delete(key)
   cache.set(key, chinese)
   while (cache.size > KEEP) cache.delete(cache.keys().next().value)
@@ -49,29 +49,29 @@ async function recall($, answer) {
 export function registerAnswer(on) {
   on('turn.complete', async ($, e, next) => {
     const r = await next(e)
-    // 只处理主循环的正常回答；subagent、中断、报错、拒答都跳过
+    // Only handle normal answers from the main loop; skip subagents, interrupts, errors and refusals
     if (e.agentId !== undefined || e.reason !== 'answer' || !e.answer) return r
 
-    // 代码块不发给 DeepSeek，译文里保留 [CODE n]，原代码就在上面
+    // Code blocks aren't sent to DeepSeek; the translation keeps [CODE n] since the original code is right above
     const { template } = toTemplate(splitCode(e.answer), 'code')
     if (!needsChinese(template)) return r
     $.ui.status('Translating answer…')
     try {
       const chinese = await translate($, template)
-      // 已经是中文：不追加、不存
+      // Already Chinese: don't append, don't store
       if (chinese !== null) await remember($, e.answer, chinese)
     } catch (err) {
       $.ui.log(`Answer translation failed: ${err.message}`)
     } finally {
       $.ui.status(undefined)
-      // 让回答块重画，ui.render 会把译文追加上去；store 写失败时内存里也已经有了
+      // Redraw the answer block so ui.render appends the translation; if the store write failed it's still in memory
       $.ui.invalidate('ui.render')
     }
     return r
   })
 
-  // 只给与 e.answer 一致的块追加译文：工具调用前的文字块、subagent 的输出都对不上，原样显示
-  // 不用 turn.complete 返回 { text }（画成一行、换行乱码），也不用 ui.log（每行带前缀、不渲染 markdown）
+  // Only append the translation to the block matching e.answer: text blocks before tool calls and subagent output don't match and render unchanged
+  // Not using turn.complete's { text } return (renders as one line, garbles newlines) nor ui.log (prefixes every line, no markdown rendering)
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
     const chinese = await recall($, e.props.text)
     if (!chinese) return next(e)

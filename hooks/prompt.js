@@ -1,12 +1,12 @@
-// 功能一：用户手打的内容经 DeepSeek 翻译成英文再交给 Claude；粘贴内容原样保留，不发给 DeepSeek
+// Feature 1: text the user types is translated into English via DeepSeek before it reaches Claude; pasted content is kept as-is and never sent to DeepSeek
 import { installTracker, takeParts } from './lib/tracker.js'
 import { toTemplate, needsEnglish, fill } from './lib/template.js'
 import { buildRequest, parseResponse } from './lib/deepseek.js'
 
-// prompts/to-english.md，第一次用到时读入；改了 .md 重载插件生效
+// prompts/to-english.md, read on first use; reload the plugin after editing the .md
 let system
 
-// $ 只能传给本文件里的函数，所以 IO 放这里（answer.js 里有一份同样的）
+// `$` can only be passed to functions in this file, so the IO lives here (answer.js has an identical copy)
 async function translate($, text) {
   const key = await $.env.get('DEEPSEEK_API_KEY')
   if (!key) throw new Error('DEEPSEEK_API_KEY is not set')
@@ -19,19 +19,19 @@ export function registerPrompt(on) {
   installTracker(on)
 
   on('prompt.submit', async ($, e, next) => {
-    // 只翻译用户在终端输入的 prompt；subagent、通知、peer 消息等来源都不是 composer，原样放行
+    // Only translate prompts typed in the terminal; subagents, notifications, peer messages etc. don't come from the composer and pass through unchanged
     if (e.origin.kind !== 'composer') return next(e)
     const { template, hidden } = toTemplate(takeParts(e), 'paste')
     if (!needsEnglish(template)) return next(e)
 
-    // 失败就发原文，不吞掉用户的 prompt
+    // On failure send the original text rather than swallowing the user's prompt
     let text = e.text
     try {
       const english = await translate($, template)
-      // 已经是英文：原样发出，不打核对行
+      // Already English: send as-is, without echoing the review lines
       if (english === null) return next(e)
       text = fill(english, hidden, 'paste')
-      // 视觉反馈：显示翻译前的原文（粘贴为占位符），方便核对；$.ui.log 不发给模型，只画一行，所以逐行输出
+      // Visual feedback: show the pre-translation text (pastes as placeholders) for review; $.ui.log isn't sent to the model and renders a single line, so log line by line
       for (const line of template.split('\n')) $.ui.log(line)
     } catch (err) {
       $.ui.log(`Translation failed, sending original: ${err.message}`)

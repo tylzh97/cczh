@@ -1,9 +1,9 @@
-// 入口：hooks.json 只允许一个模块，两个功能各自注册
-// 加载器允许把 on 传给具名导入的函数；$ 则不能跨文件，所以每个功能的 IO 都留在自己的模块里
+// Entry point: hooks.json allows only one module, so each feature registers itself here
+// The loader allows passing `on` to named-import functions; `$` cannot cross files, so each feature keeps its IO in its own module
 import { registerPrompt } from './prompt.js'
 import { registerAnswer } from './answer.js'
 
 export function register(on) {
-  registerPrompt(on) // 手打内容翻译成英文
-  registerAnswer(on) // 最后回答翻译成中文
+  registerPrompt(on) // translate typed input into English
+  registerAnswer(on) // translate the final answer into Chinese
 }
