@@ -1,7 +1,12 @@
 {
   "name": "cczh",
   "description": "Translate typed prompts to English via DeepSeek (pastes kept as-is) and show a Chinese translation under the final answer",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "author": {
+    "name": "Birkhoff",
+    "email": "admin@maikebuke.com"
+  },
+  "repository": "https://github.com/tylzh97/cczh",
   "userConfig": {
     "deepseek_api_key": {
       "type": "string",

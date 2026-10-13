@@ -1,0 +1,15 @@
+{
+  "name": "cczh",
+  "description": "cczh: type in Chinese, Claude reads English; answers get a Chinese translation",
+  "owner": {
+    "name": "Birkhoff",
+    "email": "admin@maikebuke.com"
+  },
+  "plugins": [
+    {
+      "name": "cczh",
+      "source": "./",
+      "description": "Translate typed prompts to English via DeepSeek (pastes kept as-is) and show a Chinese translation under the final answer"
+    }
+  ]
+}
