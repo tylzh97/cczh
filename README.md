@@ -12,6 +12,7 @@ Or from the shell:
 
 ```bash
 claude plugin marketplace add tylzh97/cczh
+claude plugin install cczh@cczh
 ```
 
 Update to the latest version:
