@@ -42,3 +42,33 @@ export function parseResponse(r) {
   if (!translated) throw new Error('DeepSeek returned empty content')
   return translated === UNCHANGED ? null : translated
 }
+
+const BALANCE = 'https://api.deepseek.com/user/balance'
+
+/**
+ * Build the availability ping: GET /user/balance costs no tokens and checks the network, the key and the balance at once.
+ *
+ * @param {string} key DeepSeek API key.
+ * @returns {[string, import('claude-code').HttpInit]} [url, init], passed straight to $.http.fetch.
+ */
+export function buildPing(key) {
+  return [BALANCE, { method: 'GET', headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' } }]
+}
+
+/**
+ * Read the ping response.
+ *
+ * @param {import('claude-code').HttpResponse} r The $.http.fetch result.
+ * @returns {string | undefined} Why DeepSeek can't be used; undefined when it can.
+ */
+export function pingProblem(r) {
+  if (r.status === 401) return 'invalid API key'
+  if (!r.ok) return `HTTP ${r.status}: ${r.text.slice(0, 200)}`
+  let body
+  try {
+    body = JSON.parse(r.text)
+  } catch {
+    return `unexpected response: ${r.text.slice(0, 200)}`
+  }
+  return body?.is_available === true ? undefined : 'insufficient balance'
+}
