@@ -73,6 +73,8 @@ export function registerPrompt(on) {
       if (english === null) return next(e)
       // Visual feedback: show the pre-translation text (pastes as placeholders) for review; $.ui.log isn't sent to the model and renders a single line, so log line by line
       for (const line of template.split('\n')) $.ui.log(line)
+      // Served from the cache, no DeepSeek call this time
+      if (hit) $.ui.log('(cached)')
     } catch (err) {
       $.ui.log(`Translation failed, sending original: ${err.message}`)
     }
