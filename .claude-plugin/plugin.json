@@ -1,1 +1,13 @@
-{"name": "cczh", "description": "Translate typed prompts to English via DeepSeek (pastes kept as-is) and show a Chinese translation under the final answer", "version": "0.1.0"}
+{
+  "name": "cczh",
+  "description": "Translate typed prompts to English via DeepSeek (pastes kept as-is) and show a Chinese translation under the final answer",
+  "version": "0.1.0",
+  "userConfig": {
+    "deepseek_api_key": {
+      "type": "string",
+      "title": "DeepSeek API key",
+      "description": "Stored in plain text in settings.json pluginConfigs; falls back to the DEEPSEEK_API_KEY environment variable when empty",
+      "required": false
+    }
+  }
+}

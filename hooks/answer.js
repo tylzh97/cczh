@@ -2,6 +2,7 @@
 import { splitCode, toTemplate } from './lib/template.js'
 import { needsChinese } from './lib/lang.js'
 import { buildRequest, parseResponse } from './lib/deepseek.js'
+import { settings } from './lib/settings.js'
 
 // Translations persist in $.store (the plugin's own JSON file, outside the transcript and model context), surviving restarts, hot reloads and --resume
 // Stored as [[hash, translation], ...], oldest first; the whole store is capped at 4 MiB, so only the most recent KEEP entries are kept
@@ -15,8 +16,9 @@ let system
 
 // `$` can only be passed to functions in this file, so the IO lives here (prompt.js has an identical copy)
 async function translate($, text) {
-  const key = await $.env.get('DEEPSEEK_API_KEY')
-  if (!key) throw new Error('DEEPSEEK_API_KEY is not set')
+  // userConfig first, then the environment (settings.json env included)
+  const key = settings.apiKey || (await $.env.get('DEEPSEEK_API_KEY'))
+  if (!key) throw new Error('no DeepSeek API key: set pluginConfigs.cczh.options.deepseek_api_key or DEEPSEEK_API_KEY')
   system ??= await $.fs.read(`${$.plugin.root}/prompts/to-chinese.md`)
   const [url, init] = buildRequest(system, text, key)
   return parseResponse(await $.http.fetch(url, init))
@@ -78,7 +80,7 @@ export function registerAnswer(on) {
   on('turn.complete', async ($, e, next) => {
     const r = await next(e)
     // Only handle normal answers from the main loop; skip subagents, interrupts, errors and refusals
-    if (e.agentId !== undefined || e.reason !== 'answer' || !e.answer) return r
+    if (!settings.enabled || e.agentId !== undefined || e.reason !== 'answer' || !e.answer) return r
 
     // Code blocks aren't sent to DeepSeek; the translation keeps [CODE n] since the original code is right above
     const { template } = toTemplate(splitCode(e.answer), 'code')
@@ -101,6 +103,8 @@ export function registerAnswer(on) {
   // Only append the translation to the block matching e.answer: text blocks before tool calls and subagent output don't match and render unchanged
   // Not using turn.complete's { text } return (renders as one line, garbles newlines) nor ui.log (prefixes every line, no markdown rendering)
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
+    // Turned off: hide translations already stored, /cczh on brings them back
+    if (!settings.enabled) return next(e)
     const chinese = await recall($, e.props.text)
     if (!chinese) return next(e)
     return next({ ...e, props: { ...e.props, text: `${e.props.text}\n\n---\n\n${chinese}` } })

@@ -2,8 +2,12 @@
 // The loader allows passing `on` to named-import functions; `$` cannot cross files, so each feature keeps its IO in its own module
 import { registerPrompt } from './prompt.js'
 import { registerAnswer } from './answer.js'
+import { registerCommand } from './command.js'
+import { loadOptions } from './lib/settings.js'
 
-export function register(on) {
+export function register(on, options) {
+  loadOptions(options) // the API key from userConfig
+  registerCommand(on) // /cczh on|off
   registerPrompt(on) // translate typed input into English
   registerAnswer(on) // translate the final answer into Chinese
 }
